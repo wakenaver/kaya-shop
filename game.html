@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Kaya Sandwich Shop</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body style="font-family:Arial;text-align:center">
+
+<h2>🥪 Kaya Sandwich Shop</h2>
+
+<p>Day: <span id="day">1</span></p>
+<p>Time: <span id="clock">08:00</span></p>
+<p>Money: <span id="money">200</span> | Profit: <span id="profit">0</span></p>
+
+<hr>
+
+<h3 id="phase">🌙 Night</h3>
+
+<button id="startBtn">▶ Start Day</button>
+<button id="closeBtn" style="display:none">⏹ Close Shop</button>
+
+<hr>
+
+<h3>📦 Inventory</h3>
+<p>Bread: <span id="bread">10</span> | Kaya: <span id="kaya">6</span></p>
+<p>Sandwich: <span id="sand">0</span></p>
+
+<button onclick="buyBread()">ซื้อขนมปัง (12)</button>
+<button onclick="buyKaya()">ซื้อคายา (14)</button>
+<button onclick="makeSand()">ทำแซนวิช</button>
+
+<hr>
+
+<h3>📋 Orders (<span id="left">0</span>)</h3>
+<div id="orders" style="display:flex;overflow-x:auto;"></div>
+
+<p id="log"></p>
+
+<canvas id="c" width="300"></canvas>
+
+<script>
+
+// ===== ELEMENT =====
+const startBtn = document.getElementById("startBtn")
+const closeBtn = document.getElementById("closeBtn")
+const phase = document.getElementById("phase")
+
+// ===== STATE =====
+let d=1,m=200,i=0,e=0
+let b=10,k=6,ss=0
+let orders=[]
+let customersLeft=0
+let isDay=false
+let timer=null
+let gameTime=480
+let his=[]
+
+// ===== TIME =====
+function formatTime(min){
+let h=Math.floor(min/60)
+let m=min%60
+return String(h).padStart(2,'0')+":"+String(m).padStart(2,'0')
+}
+
+// ===== UI =====
+function ui(){
+day.innerText=d
+money.innerText=m
+profit.innerText=i-e
+bread.innerText=b
+kaya.innerText=k
+sand.innerText=ss
+left.innerText=customersLeft
+clock.innerText=formatTime(gameTime)
+renderOrders()
+}
+
+function log(t){
+document.getElementById("log").innerText=t
+}
+
+// ===== BUY =====
+function buyBread(){
+if(isDay){log("ซื้อไม่ได้ตอนกลางวัน");return}
+if(m>=12){m-=12;e+=12;b++}
+ui()
+}
+
+function buyKaya(){
+if(isDay){log("ซื้อไม่ได้ตอนกลางวัน");return}
+if(m>=14){m-=14;e+=14;k++}
+ui()
+}
+
+// ===== MAKE =====
+function makeSand(){
+if(isDay){log("ทำก่อนเปิดร้าน");return}
+if(b>=2 && k>=1){
+b-=2;k--;ss++
+}else{
+log("วัตถุดิบไม่พอ")
+}
+ui()
+}
+
+// ===== SERVE =====
+function serve(idx){
+let o=orders[idx]
+
+if(ss>=o.sand){
+ss-=o.sand
+let earn=o.sand*43   // 💰 ราคาขายใหม่
+m+=earn
+i+=earn
+orders.splice(idx,1)
+log("ขาย +"+earn)
+}else{
+log("ของไม่พอ")
+}
+
+ui()
+}
+
+// ===== ORDER =====
+function newOrder(){
+if(customersLeft<=0) return
+
+orders.push({
+sand: Math.floor(Math.random()*2)+1,
+wait: 90
+})
+
+customersLeft--
+}
+
+// ===== START DAY =====
+function startDay(){
+
+if(isDay) return
+
+isDay=true
+orders=[]
+gameTime=480
+
+customersLeft=Math.floor(Math.random()*8)+8  // ลดลูกค้า
+
+startBtn.style.display="none"
+closeBtn.style.display="inline"
+phase.innerText="☀️ Day"
+
+timer=setInterval(()=>{
+
+gameTime+=2
+
+if(Math.random()<0.35){
+newOrder()
+}
+
+orders.forEach(o=>o.wait--)
+
+orders=orders.filter(o=>{
+if(o.wait<=0){
+log("ลูกค้าหนี 😢")
+return false
+}
+return true
+})
+
+if(gameTime>=840){
+endDay()
+}
+
+ui()
+
+},1000)
+}
+
+// ===== END DAY =====
+function endDay(){
+
+clearInterval(timer)
+timer=null
+isDay=false
+
+orders=[]
+his.push(i-e)
+
+d++
+
+startBtn.style.display="inline"
+closeBtn.style.display="none"
+phase.innerText="🌙 Night"
+
+log("กลางคืนแล้ว")
+
+ui()
+
+if(d>30){
+new Chart(c,{
+type:"line",
+data:{
+labels:his.map((_,i)=>i+1),
+datasets:[{data:his}]
+}
+})
+alert("กำไรรวม: "+(i-e))
+}
+}
+
+// ===== RENDER =====
+function renderOrders(){
+let box=document.getElementById("orders")
+box.innerHTML=""
+
+orders.forEach((o,idx)=>{
+let div=document.createElement("div")
+div.style.border="1px solid black"
+div.style.margin="5px"
+div.style.padding="10px"
+
+div.innerHTML=`
+👤<br>
+${o.sand} ชิ้น<br>
+⏳ ${o.wait}<br>
+<button onclick="serve(${idx})">Serve</button>
+`
+box.appendChild(div)
+})
+}
+
+// ===== INIT =====
+startBtn.onclick=startDay
+closeBtn.onclick=endDay
+
+ui()
+
+</script>
+
+</body>
+</html>
